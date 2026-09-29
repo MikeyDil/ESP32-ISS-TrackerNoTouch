@@ -1,0 +1,45 @@
+name: Build CYD No-Touch Firmware
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build 4 inch CYD firmware
+        run: pio run -e CHEAP_YELLOW_DISPLAY_4IN
+
+      - name: Show generated firmware
+        run: |
+          ls -lh firmware/
+          cat firmware/manifest.json
+
+      - name: Commit firmware to repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add firmware/
+
+          if git diff --cached --quiet; then
+            echo "No firmware changes to commit."
+          else
+            git commit -m "Build no-touch CYD firmware"
+            git push
+          fi

@@ -22,23 +22,51 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
-      - name: Build 4 inch CYD firmware
+      - name: Build modified CYD firmware
         run: pio run -e CHEAP_YELLOW_DISPLAY_4IN
 
-      - name: Show generated firmware
+      - name: Copy compiled firmware for web flasher
         run: |
-          ls -lh firmware/
-          cat firmware/manifest.json
+          mkdir -p firmware
+          cp .pio/build/CHEAP_YELLOW_DISPLAY_4IN/firmware.bin firmware/firmware.bin
 
-      - name: Commit firmware to repository
+      - name: Create web flasher manifest
+        run: |
+          cat > firmware/manifest.json <<'EOF'
+          {
+            "name": "HB9IIU ISS Tracker - No Touch",
+            "version": "1.0.0",
+            "new_install_prompt_erase": true,
+            "builds": [
+              {
+                "chipFamily": "ESP32",
+                "parts": [
+                  {
+                    "path": "firmware.bin",
+                    "offset": 65536
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Show firmware timestamp and size
+        run: |
+          ls -lh .pio/build/CHEAP_YELLOW_DISPLAY_4IN/firmware.bin
+          ls -lh firmware/firmware.bin
+          sha256sum .pio/build/CHEAP_YELLOW_DISPLAY_4IN/firmware.bin
+          sha256sum firmware/firmware.bin
+
+      - name: Commit compiled firmware
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add firmware/
+          git add firmware/firmware.bin firmware/manifest.json
 
           if git diff --cached --quiet; then
-            echo "No firmware changes to commit."
+            echo "No firmware changes."
           else
             git commit -m "Build no-touch CYD firmware"
             git push
